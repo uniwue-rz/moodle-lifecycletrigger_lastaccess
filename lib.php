@@ -63,6 +63,18 @@ class lastaccess extends base_automatic {
         );
     }
 
+    // SELECT mdl_user_lastaccess.courseid,
+    // MAX(timeaccess) AS last_access
+    // FROM   mdl_user_lastaccess
+    // WHERE  timeaccess < 1559743340
+    // AND userid NOT IN ( 18510, 4, 5, 6,
+    // 7	 8, 9, 10,
+    // 11, 12, 13, 14,
+    // 15, 13178, 17005, 13403,
+    // 14445, 20491 )
+    // GROUP  BY mdl_user_lastaccess.courseid
+    // ORDER  BY courseid
+
     public function extend_add_instance_form_definition($mform) {
         $elementname = 'delay';
         $mform->addElement('duration', $elementname, get_string($elementname, 'lifecycletrigger_lastaccess'));

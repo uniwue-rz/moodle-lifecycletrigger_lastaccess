@@ -23,4 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['pluginname'] = 'Last access';
+$string['pluginname'] = 'Last access trigger';
+
+$string['delay'] = 'Delay from last access of course until starting a process';
+$string['delay_help'] = 'Delay from last access of course (only regarding enrolled users) until starting a process.';
