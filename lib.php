@@ -23,6 +23,7 @@
  * @copyright  2019 Yorick Reum JMU
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
 namespace tool_lifecycle\trigger;
 
 use tool_lifecycle\manager\settings_manager;
@@ -33,6 +34,7 @@ require_once(__DIR__ . '/../lib.php');
 
 /**
  * Class which implements the basic methods necessary for a cleanyp courses trigger subplugin
+ *
  * @package tool_lifecycle_trigger
  */
 class lastaccess extends base_automatic {
@@ -40,14 +42,14 @@ class lastaccess extends base_automatic {
 
     /**
      * Checks the course and returns a repsonse, which tells if the course should be further processed.
+     *
      * @param $course object to be processed.
      * @param $triggerid int id of the trigger instance.
      * @return trigger_response
      */
     public function check_course($course, $triggerid) {
-
         $delay = settings_manager::get_settings($triggerid, SETTINGS_TYPE_TRIGGER)['delay'];
-        $course->lastaccess = 'foobar todo';
+        $course->lastaccess = self::get_last_access_enrolled_users($course->id);
         $now = time();
 
         if ($course->lastaccess + $delay < $now) {
@@ -61,6 +63,43 @@ class lastaccess extends base_automatic {
         return array(
             new instance_setting('delay', PARAM_INT)
         );
+    }
+
+    /**
+     * Takes a course id, returns the timestamp of the last access / interaction
+     * with this course (only counting interactions of users enrolled in the course)
+     *
+     * @param $courseId int
+     * @return int
+     */
+    private static function get_last_access_enrolled_users($courseId) {
+        global $DB;
+        $sql = "SELECT
+                    MAX(la.timeaccess) AS lastaccess
+                FROM
+                    mdl_user_enrolments AS ue
+                    JOIN mdl_enrol AS e ON (
+                        ue.enrolid = e.id
+                    )
+                    JOIN mdl_user_lastaccess AS la ON (
+                        ue.userid = la.userid
+                    )
+                WHERE
+                    e.courseid = la.courseid
+                    AND la.courseid = :courseid
+                GROUP BY la.courseid";
+        try {
+            $record = $DB->get_record_sql($sql, array("courseid" => $courseId));
+        } catch (\dml_exception $e) {
+            $record = new \stdClass();
+            $record->lastaccess = 0;
+        }
+
+        // @TODO
+        // zwei getrennte Abfrage: Erste alle letzten Zugriffe, dann kucken ob auch eingeschrieben
+        // Gastzugriffe stehen auch in last access --> ist okay, muss aber in die Dokumentation
+
+        return intval($record->lastaccess);
     }
 
     // SELECT mdl_user_lastaccess.courseid,
