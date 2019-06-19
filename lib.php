@@ -40,14 +40,13 @@ require_once(__DIR__ . '/../lib.php');
  * @package tool_lifecycle_trigger
  */
 class lastaccess extends base_automatic {
-
-
     /**
      * Checks the course and returns a repsonse, which tells if the course should be further processed.
      *
      * @param $course object to be processed.
      * @param $triggerid int id of the trigger instance.
      * @return trigger_response
+     * @throws \coding_exception
      */
     public function check_course($course, $triggerid) {
         $delay = settings_manager::get_settings($triggerid, SETTINGS_TYPE_TRIGGER)['delay'];
@@ -81,19 +80,19 @@ class lastaccess extends base_automatic {
 
 
         global $DB;
-        $sql = "SELECT MAX(timeaccess) AS lastaccess, userid FROM user_lastaccess WHERE courseid = :courseid GROUP BY courseid";
+        $sql = "SELECT timeaccess, userid FROM mdl_user_lastaccess WHERE courseid = :courseid ORDER BY timeaccess DESC";
         try {
-            $record = $DB->get_record_sql($sql, array("courseid" => $courseId));
+            $records = $DB->get_records_sql($sql, array("courseid" => $courseId));
         } catch (\dml_exception $e) {
-            $record = new \stdClass();
-            $record->lastaccess = 0;
+            $records = [];
         }
 
         $context = context_course::instance($courseId);
-        $isEnrolled = is_enrolled($context, $record->userid, '', true);
-
-        if($isEnrolled) {
-            return intval($record->lastaccess);
+        foreach ($records as $record) {
+            $isEnrolled = is_enrolled($context, $record->userid, '', true);
+            if ($isEnrolled) {
+                return $record->timeaccess;
+            }
         }
 
         return 0;
