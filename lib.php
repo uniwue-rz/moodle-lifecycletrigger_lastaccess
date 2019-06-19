@@ -74,10 +74,7 @@ class lastaccess extends base_automatic {
      * @return int
      */
     private static function get_last_access_enrolled_users($courseId) {
-        // @TODO
-        // zwei getrennte Abfrage: Erste alle letzten Zugriffe, dann kucken ob auch eingeschrieben
-        // Gastzugriffe stehen auch in last access --> ist okay, muss aber in die Dokumentation
-
+        // @TODO Für die Doku: Gastzugriffe stehen auch in lastaccess --> ist okay so, aber erwähnenswert
 
         global $DB;
         $sql = "SELECT timeaccess, userid FROM mdl_user_lastaccess WHERE courseid = :courseid ORDER BY timeaccess DESC";
