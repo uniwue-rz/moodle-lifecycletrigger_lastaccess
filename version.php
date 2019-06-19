@@ -25,5 +25,5 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-$plugin->version  = 2019061201;
+$plugin->version  = 2019061901;
 $plugin->component = 'lifecycletrigger_lastaccess';
