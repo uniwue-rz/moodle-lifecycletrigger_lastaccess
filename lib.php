@@ -29,6 +29,8 @@ namespace tool_lifecycle\trigger;
 use tool_lifecycle\manager\settings_manager;
 use tool_lifecycle\response\trigger_response;
 
+use context_course;
+
 defined('MOODLE_INTERNAL') || die();
 require_once(__DIR__ . '/../lib.php');
 
@@ -67,27 +69,19 @@ class lastaccess extends base_automatic {
 
     /**
      * Takes a course id, returns the timestamp of the last access / interaction
-     * with this course (only counting interactions of users enrolled in the course)
+     * with this course (only counting interactions of users who are enrolled in the course)
      *
      * @param $courseId int
      * @return int
      */
     private static function get_last_access_enrolled_users($courseId) {
+        // @TODO
+        // zwei getrennte Abfrage: Erste alle letzten Zugriffe, dann kucken ob auch eingeschrieben
+        // Gastzugriffe stehen auch in last access --> ist okay, muss aber in die Dokumentation
+
+
         global $DB;
-        $sql = "SELECT
-                    MAX(la.timeaccess) AS lastaccess
-                FROM
-                    mdl_user_enrolments AS ue
-                    JOIN mdl_enrol AS e ON (
-                        ue.enrolid = e.id
-                    )
-                    JOIN mdl_user_lastaccess AS la ON (
-                        ue.userid = la.userid
-                    )
-                WHERE
-                    e.courseid = la.courseid
-                    AND la.courseid = :courseid
-                GROUP BY la.courseid";
+        $sql = "SELECT MAX(timeaccess) AS lastaccess, userid FROM user_lastaccess WHERE courseid = :courseid GROUP BY courseid";
         try {
             $record = $DB->get_record_sql($sql, array("courseid" => $courseId));
         } catch (\dml_exception $e) {
@@ -95,24 +89,15 @@ class lastaccess extends base_automatic {
             $record->lastaccess = 0;
         }
 
-        // @TODO
-        // zwei getrennte Abfrage: Erste alle letzten Zugriffe, dann kucken ob auch eingeschrieben
-        // Gastzugriffe stehen auch in last access --> ist okay, muss aber in die Dokumentation
+        $context = context_course::instance($courseId);
+        $isEnrolled = is_enrolled($context, $record->userid, '', true);
 
-        return intval($record->lastaccess);
+        if($isEnrolled) {
+            return intval($record->lastaccess);
+        }
+
+        return 0;
     }
-
-    // SELECT mdl_user_lastaccess.courseid,
-    // MAX(timeaccess) AS last_access
-    // FROM   mdl_user_lastaccess
-    // WHERE  timeaccess < 1559743340
-    // AND userid NOT IN ( 18510, 4, 5, 6,
-    // 7	 8, 9, 10,
-    // 11, 12, 13, 14,
-    // 15, 13178, 17005, 13403,
-    // 14445, 20491 )
-    // GROUP  BY mdl_user_lastaccess.courseid
-    // ORDER  BY courseid
 
     public function extend_add_instance_form_definition($mform) {
         $elementname = 'delay';
