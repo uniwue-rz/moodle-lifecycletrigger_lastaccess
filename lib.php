@@ -49,15 +49,8 @@ class lastaccess extends base_automatic {
      * @throws \coding_exception
      */
     public function check_course($course, $triggerid) {
-        $delay = settings_manager::get_settings($triggerid, SETTINGS_TYPE_TRIGGER)['delay'];
-        $course->lastaccess = self::get_last_access_enrolled_users($course->id);
-        $now = time();
-
-        if ($course->lastaccess + $delay < $now) {
-            return trigger_response::trigger();
-        }
-
-        return trigger_response::next();
+        // Every decision is already in the where statement.
+        return trigger_response::trigger();
     }
 
     public function instance_settings() {
@@ -67,32 +60,41 @@ class lastaccess extends base_automatic {
     }
 
     /**
-     * Takes a course id, returns the timestamp of the last access / interaction
-     * with this course (only counting interactions of users who are enrolled in the course)
+     * Returns the where statement for all courses that should be triggered,
+     * meaning timestamp of the last access / interaction with this course is older than delay
+     * (only counting interactions of users who are enrolled in the course)
      *
-     * @param $courseId int
-     * @return int
+     * *
+     * @param $triggerid int id of the trigger instance.
+     * @return array
+     * @throws \coding_exception
+     * @throws \dml_exception
      */
-    private static function get_last_access_enrolled_users($courseId) {
-        // @TODO Für die Doku: Gastzugriffe stehen auch in lastaccess --> ist okay so, aber erwähnenswert
-
+    public function get_course_recordset_where($triggerid) {
         global $DB;
-        $sql = "SELECT timeaccess, userid FROM mdl_user_lastaccess WHERE courseid = :courseid ORDER BY timeaccess DESC";
+
+        $sql = "SELECT la.courseid 
+        FROM mdl_user_enrolments AS ue 
+        JOIN mdl_enrol AS e ON (ue.enrolid = e.id) 
+        JOIN mdl_user_lastaccess AS la ON (ue.userid = la.userid) 
+        WHERE e.courseid = la.courseid 
+        GROUP BY la.courseid 
+        HAVING MAX(la.timeaccess) < :lastaccessthreshold";
+
+        $delay = settings_manager::get_settings($triggerid, SETTINGS_TYPE_TRIGGER)['delay'];
+        $now = time();
+
         try {
-            $records = $DB->get_records_sql($sql, array("courseid" => $courseId));
+            $records = $DB->get_records_sql($sql, array("lastaccessthreshold" => $now - $delay));
         } catch (\dml_exception $e) {
             $records = [];
         }
 
-        $context = context_course::instance($courseId);
-        foreach ($records as $record) {
-            $isEnrolled = is_enrolled($context, $record->userid, '', true);
-            if ($isEnrolled) {
-                return $record->timeaccess;
-            }
-        }
+        $courseids = array_column($records, 'courseid');
 
-        return 0;
+        list($insql, $inparams) = $DB->get_in_or_equal($courseids, SQL_PARAMS_NAMED);
+        $where = "{course}.id {$insql}";
+        return array($where, $inparams);
     }
 
     public function extend_add_instance_form_definition($mform) {

@@ -4,7 +4,7 @@
 It simply triggers courses which haven't been accessed (by enrolled users) since a configurable delay.
 
 ## Settings
-Site administrators sets delay (in various time units).  
+Site administrator sets delay (in various time units).  
 
 ## More information  
 For detailed information on trigger plugins visit the 
